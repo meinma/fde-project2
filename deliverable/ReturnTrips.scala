@@ -31,9 +31,9 @@ atan2(
 				+ cos($"lat2_rad") * cos($"lat1_rad")
 				* sin(($"lon2_rad"-$"lon1_rad")/2) * sin(($"lon2_rad"-$"lon1_rad")/2))
 		)
-	) * 6371e3 * 2
+	) * 6371e3 *2
 
-) / (2*dist))).cache()
+) / (2 * dist))).cache()
 
 val distanceNeighbours = distanceBuckets.withColumn("distanceBucket",explode(array($"distanceBucket" - 1,$"distanceBucket",$"distanceBucket" + 1))).cache()
 
@@ -44,9 +44,9 @@ val dropoffBuckets = distanceBuckets.withColumn("dropoffBucket",floor((unix_time
 val pickupNeighbours = pickupBuckets.withColumn("pickupBucket", explode(array($"pickupBucket", $"pickupBucket" + 1))).cache()
 
 val timeJoin = dropoffBuckets.as("a").join(pickupNeighbours.as("b"), ($"a.dropoffBucket" === $"b.pickupBucket")
+	&& ($"a.distanceBucket" === $"b.distanceBucket")
     && (unix_timestamp($"b.tpep_pickup_datetime") > unix_timestamp($"a.tpep_dropoff_datetime"))
     && (unix_timestamp($"a.tpep_dropoff_datetime") + 8*3600 > unix_timestamp($"b.tpep_pickup_datetime"))
-    && ($"a.distanceBucket" === $"b.distanceBucket")
     && (atan2(
 		sqrt(
 			sin(($"a.lat2_rad"-$"b.lat1_rad")/2) * sin(($"a.lat2_rad"-$"b.lat1_rad")/2)
