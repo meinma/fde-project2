@@ -15,10 +15,13 @@ object ReturnTrips {
 
 
 // Für die Distanzberechnung
-val trips2 = trips.withColumn("lon1_rad", toRadians($"pickup_longitude"))
-val trips3 = trips2.withColumn("lon2_rad", toRadians($"dropoff_longitude"))
-val trips4 = trips3.withColumn("lat1_rad", toRadians($"pickup_latitude"))
-val trips5 = trips4.withColumn("lat2_rad", toRadians($"dropoff_latitude"))
+val trips4 = trips.withColumn("lon1_rad", toRadians($"pickup_longitude"))
+.withColumn("lon2_rad", toRadians($"dropoff_longitude"))
+.withColumn("lat1_rad", toRadians($"pickup_latitude"))
+.withColumn("lat2_rad", toRadians($"dropoff_latitude"))
+
+val trips5 = trips4.select("lon1_rad","lon2_rad","lat1_rad","lat2_rad","tpep_pickup_datetime","tpep_dropoff_datetime")
+
 
 val distanceBuckets = trips5.withColumn("distanceBucket",floor((
 atan2(
