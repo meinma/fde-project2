@@ -34,17 +34,14 @@ atan2(
 	) * 6371e3 *2
 
 ) / (2 * dist))).cache()
-
 val distanceNeighbours = distanceBuckets.withColumn("distanceBucket",explode(array($"distanceBucket" - 1,$"distanceBucket",$"distanceBucket" + 1))).cache()
-
-val pickupBuckets = distanceBuckets.withColumn("pickupBucket",floor((unix_timestamp($"tpep_pickup_datetime") - unix_timestamp(lit("2016-01-01 00:00:00"))) 
+val pickupBuckets = distanceBuckets.withColumn("pickupBucket",floor((unix_timestamp($"tpep_pickup_datetime") - unix_timestamp(lit("2016-01-01 00:00:00"))) //distanceBuckets
 	/ (8*3600))).cache()
-val dropoffBuckets = distanceNeighbours.withColumn("dropoffBucket",floor((unix_timestamp($"tpep_dropoff_datetime") - unix_timestamp(lit("2016-01-01 00:00:00")))
+val dropoffBuckets = distanceNeighbours.withColumn("dropoffBucket",floor((unix_timestamp($"tpep_dropoff_datetime") - unix_timestamp(lit("2016-01-01 00:00:00"))) //distanceNeighbours
  / (8*3600))).cache()
 val pickupNeighbours = pickupBuckets.withColumn("pickupBucket", explode(array($"pickupBucket", $"pickupBucket" + 1))).cache()
-
-val timeJoin = dropoffBuckets.as("a").join(pickupNeighbours.as("b"),($"a.distanceBucket" === $"b.distanceBucket") 
-	&&($"a.dropoffBucket" === $"b.pickupBucket")
+val timeJoin = dropoffBuckets.as("a").join(pickupNeighbours.as("b"),($"a.dropoffBucket" === $"b.pickupBucket")
+	&& ($"a.distanceBucket" === $"b.distanceBucket")
     && (unix_timestamp($"b.tpep_pickup_datetime") > unix_timestamp($"a.tpep_dropoff_datetime"))
     && (unix_timestamp($"a.tpep_dropoff_datetime") + 8*3600 > unix_timestamp($"b.tpep_pickup_datetime"))
     && (atan2(
