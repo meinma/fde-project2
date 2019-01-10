@@ -36,7 +36,9 @@ atan2(
 		)
 	) * 6371e3 *2
 
-) / (2 * dist))).cache()
+) / (2 * dist))).cache() 
+//val distanceBuckets = trips5.withColumn("distanceBucket",floor((acos(cos($"lat1_rad")*cos($"lat2_rad")*cos($"lon2_rad" - $"lon1_rad") + sin($"lat1_rad") * sin($"lat2_rad")) *6378137) / (2*dist))).cache()
+
 val distanceNeighbours = distanceBuckets.withColumn("distanceBucket",explode(array($"distanceBucket" - 1,$"distanceBucket",$"distanceBucket" + 1))).cache()
 val pickupBuckets = distanceBuckets.withColumn("pickupBucket",floor((unix_timestamp($"tpep_pickup_datetime") - unix_timestamp(lit("2016-01-01 00:00:00"))) //distanceBuckets
 	/ (8*3600))).cache()
@@ -49,7 +51,26 @@ val timeSelect = timeJoin.select($"b.tpep_pickup_datetime",$"a.tpep_dropoff_date
 val timeFilter = timeSelect.filter(unix_timestamp($"b.tpep_pickup_datetime") > unix_timestamp($"a.tpep_dropoff_datetime"))
 val timeFilter2 = timeFilter.filter(unix_timestamp($"a.tpep_dropoff_datetime") + 8*3600 > unix_timestamp($"b.tpep_pickup_datetime"))
 val distanceSelect = timeFilter2.select($"a.lon1_rad",$"a.lon2_rad",$"a.lat1_rad",$"a.lat2_rad",$"b.lon1_rad",$"b.lat1_rad",$"b.lat2_rad",$"b.lon2_rad")
-val distanceFilter = distanceSelect.filter(atan2(
+val distanceFilter = distanceSelect.filter((acos(cos($"b.lat1_rad")*cos($"a.lat2_rad")*cos($"a.lon2_rad" - $"b.lon1_rad") + sin($"b.lat1_rad") * sin($"a.lat2_rad")) * 6371e3 ) < dist)
+val distanceFilter2 = distanceFilter.filter((acos(cos($"a.lat1_rad")*cos($"b.lat2_rad")*cos($"b.lon2_rad" - $"a.lon1_rad") + sin($"a.lat1_rad") * sin($"b.lat2_rad")) *6371e3) < dist)
+distanceFilter2
+}}
+
+/*
+
+
+
+
+
+acos(cos($"lat1_rad")*cos($"lat2_rad")*cos($"lon2_rad" - $"lon1_rad") + sin($"lat1_rad") * sin($"lat2_rad")) *6378137
+
+
+
+
+
+
+
+atan2(
 		sqrt(
 			sin(($"a.lat2_rad"-$"b.lat1_rad")/2) * sin(($"a.lat2_rad"-$"b.lat1_rad")/2)
 				+ cos($"a.lat2_rad") * cos($"b.lat1_rad")
@@ -59,20 +80,8 @@ val distanceFilter = distanceSelect.filter(atan2(
 				+ cos($"a.lat2_rad") * cos($"b.lat1_rad")
 				* sin(($"a.lon2_rad"-$"b.lon1_rad")/2) * sin(($"a.lon2_rad"-$"b.lon1_rad")/2))
 		)
-	) * 6371e3 * 2 < dist) 
-val distanceFilter2 = distanceFilter.filter(atan2(
-		sqrt(
-			sin(($"b.lat2_rad"-$"a.lat1_rad")/2) * sin(($"b.lat2_rad"-$"a.lat1_rad")/2)
-				+ cos($"b.lat2_rad") * cos($"a.lat1_rad")
-				* sin(($"b.lon2_rad"-$"a.lon1_rad")/2) * sin(($"b.lon2_rad"-$"a.lon1_rad")/2)
-		),
-		sqrt(($"a.lat2_rad"/$"a.lat2_rad") - (sin(($"b.lat2_rad"-$"a.lat1_rad")/2) * sin(($"b.lat2_rad"-$"a.lat1_rad")/2)
-				+ cos($"b.lat2_rad") * cos($"a.lat1_rad")
-				* sin(($"b.lon2_rad"-$"a.lon1_rad")/2) * sin(($"b.lon2_rad"-$"a.lon1_rad")/2))
-		)
-	) * 6371e3 * 2 < dist)
-distanceFilter2
-}}
+	) * 6371e3 * 2 < dist
+*/
 
 
 /*
