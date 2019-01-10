@@ -34,6 +34,11 @@ val timeJoin = dropoffBuckets.as("a").join(pickupNeighbours.as("b"),($"a.dropoff
 	&& ($"a.dropoffLon" === $"b.pickupLon")
 	&& (unix_timestamp($"b.tpep_pickup_datetime") > unix_timestamp($"a.tpep_dropoff_datetime"))
     && (unix_timestamp($"a.tpep_dropoff_datetime") + 8*3600 > unix_timestamp($"b.tpep_pickup_datetime"))
+    && ((acos(cos($"b.lat1_rad")*cos($"a.lat2_rad")*cos($"a.lon2_rad" - $"b.lon1_rad") + sin($"b.lat1_rad") * sin($"a.lat2_rad")) * 6371e3 ) < dist)
+    && ((acos(cos($"a.lat1_rad")*cos($"b.lat2_rad")*cos($"b.lon2_rad" - $"a.lon1_rad") + sin($"a.lat1_rad") * sin($"b.lat2_rad")) *6371e3) < dist)
+
+    
+/*
     && (atan2(
 		sqrt(
 			sin(($"a.lat2_rad"-$"b.lat1_rad")/2) * sin(($"a.lat2_rad"-$"b.lat1_rad")/2)
@@ -56,10 +61,14 @@ val timeJoin = dropoffBuckets.as("a").join(pickupNeighbours.as("b"),($"a.dropoff
 				+ cos($"b.lat2_rad") * cos($"a.lat1_rad")
 				* sin(($"b.lon2_rad"-$"a.lon1_rad")/2) * sin(($"b.lon2_rad"-$"a.lon1_rad")/2))
 		)
-	) * 6371e3 * 2 < dist)
+	) * 6371e3 * 2 < dist)*/
 )
+
 timeJoin
 }}
+
+//&& (acos(cos($"a.lat1_rad") * cos($"b.lat2_rad") * cos($"b.lon2_rad" - $"a.lon1_rad") + sin($"a.lat1_rad") * sin($"b.lat2_rad")))
+  //  && (acos(cos($"b.lat1_rad") * cos($"a.lat2_rad") * cos($"a.lon2_rad" - $"b.lon1_rad") + sin($"b.lat1_rad") * sin($"a.lat2_rad")))
 
 
 
