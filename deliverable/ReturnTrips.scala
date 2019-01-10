@@ -22,6 +22,14 @@ val trips4 = trips.withColumn("lon1_rad", toRadians($"pickup_longitude"))
 
 val trips5 = trips4.select("lon1_rad","lon2_rad","lat1_rad","lat2_rad","tpep_pickup_datetime","tpep_dropoff_datetime")
 
+/*
+val pickupLatitudeBucket = trips5.withColumn("pickupLat",floor(($"lat1_rad") / 2)).cache()
+val pickupLatitudeNeighbours = pickupLatitudeBucket.withColumn("pickupLat",explode(array($"pickupLat" - 1,$"pickupLat",$"pickupLat" + 1))).cache()
+val dropoffLatitude = trips5.withColumn("dropoffLat",floor(($"lat2_rad" * 200) / 2)).cache()
+*/ 
+
+
+//
 
 val distanceBuckets = trips5.withColumn("distanceBucket",floor((
 atan2(
@@ -36,18 +44,16 @@ atan2(
 		)
 	) * 6371e3 *2
 
-) / (2 * dist))).cache() 
-//val distanceBuckets = trips5.withColumn("distanceBucket",floor((acos(cos($"lat1_rad")*cos($"lat2_rad")*cos($"lon2_rad" - $"lon1_rad") + sin($"lat1_rad") * sin($"lat2_rad")) *6378137) / (2*dist))).cache()
-
-val distanceNeighbours = distanceBuckets.withColumn("distanceBucket",explode(array($"distanceBucket" - 1,$"distanceBucket",$"distanceBucket" + 1))).cache()
+) / (2 * dist)))
+val distanceNeighbours = distanceBuckets.withColumn("distanceBucket",explode(array($"distanceBucket" - 1,$"distanceBucket",$"distanceBucket" + 1)))
 val pickupBuckets = distanceBuckets.withColumn("pickupBucket",floor((unix_timestamp($"tpep_pickup_datetime") - unix_timestamp(lit("2016-01-01 00:00:00"))) //distanceBuckets
-	/ (8*3600))).cache()
+	/ (8*3600)))
 val dropoffBuckets = distanceNeighbours.withColumn("dropoffBucket",floor((unix_timestamp($"tpep_dropoff_datetime") - unix_timestamp(lit("2016-01-01 00:00:00"))) //distanceNeighbours
- / (8*3600))).cache()
-val pickupNeighbours = pickupBuckets.withColumn("pickupBucket", explode(array($"pickupBucket", $"pickupBucket" + 1))).cache()
+ / (8*3600)))
+val pickupNeighbours = pickupBuckets.withColumn("pickupBucket", explode(array($"pickupBucket", $"pickupBucket" + 1)))
 val timeJoin = dropoffBuckets.as("a").join(pickupNeighbours.as("b"),($"a.distanceBucket" === $"b.distanceBucket")&&($"a.dropoffBucket" === $"b.pickupBucket")
 	&& (unix_timestamp($"b.tpep_pickup_datetime") > unix_timestamp($"a.tpep_dropoff_datetime"))
-    //&& (unix_timestamp($"a.tpep_dropoff_datetime") + 8*3600 > unix_timestamp($"b.tpep_pickup_datetime"))
+    && (unix_timestamp($"a.tpep_dropoff_datetime") + 8*3600 > unix_timestamp($"b.tpep_pickup_datetime"))
     && (atan2(
 		sqrt(
 			sin(($"a.lat2_rad"-$"b.lat1_rad")/2) * sin(($"a.lat2_rad"-$"b.lat1_rad")/2)
