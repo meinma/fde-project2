@@ -14,7 +14,6 @@ object ReturnTrips {
     import spark.implicits._
 
 
-// Für die Distanzberechnung
 
 val trips4 = trips.withColumn("lon1_rad", toRadians($"pickup_longitude"))
 .withColumn("lon2_rad", toRadians($"dropoff_longitude"))
@@ -35,7 +34,7 @@ val timeJoin = dropoffBuckets.as("a").join(pickupNeighbours.as("b"),($"a.dropoff
 	&& ($"a.dropoffLat" === $"b.pickupLat")
 	//&& ($"a.dropoffLon" === $"b.pickupLon")
 	&& (unix_timestamp($"b.tpep_pickup_datetime") > unix_timestamp($"a.tpep_dropoff_datetime"))
-    && (unix_timestamp($"a.tpep_dropoff_datetime") + 8*3600 > unix_timestamp($"b.tpep_pickup_datetime"))
+    //&& (unix_timestamp($"a.tpep_dropoff_datetime") + 8*3600 > unix_timestamp($"b.tpep_pickup_datetime"))
     && (atan2(
 		sqrt(
 			sin(($"a.lat2_rad"-$"b.lat1_rad")/2) * sin(($"a.lat2_rad"-$"b.lat1_rad")/2)
