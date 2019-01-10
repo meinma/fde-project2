@@ -15,43 +15,25 @@ object ReturnTrips {
 
 
 // Für die Distanzberechnung
+
 val trips4 = trips.withColumn("lon1_rad", toRadians($"pickup_longitude"))
 .withColumn("lon2_rad", toRadians($"dropoff_longitude"))
 .withColumn("lat1_rad", toRadians($"pickup_latitude"))
 .withColumn("lat2_rad", toRadians($"dropoff_latitude"))
 
-val trips5 = trips4.select("lon1_rad","lon2_rad","lat1_rad","lat2_rad","tpep_pickup_datetime","tpep_dropoff_datetime")
-
-/*
-val pickupLatitudeBucket = trips5.withColumn("pickupLat",floor(($"lat1_rad") / 2)).cache()
-val pickupLatitudeNeighbours = pickupLatitudeBucket.withColumn("pickupLat",explode(array($"pickupLat" - 1,$"pickupLat",$"pickupLat" + 1))).cache()
-val dropoffLatitude = trips5.withColumn("dropoffLat",floor(($"lat2_rad" * 200) / 2)).cache()
-*/ 
-
-
-//
-
-val distanceBuckets = trips5.withColumn("distanceBucket",floor((
-atan2(
-		sqrt(
-			sin(($"lat2_rad"-$"lat1_rad")/2) * sin(($"lat2_rad"-$"lat1_rad")/2)
-				+ cos($"lat2_rad") * cos($"lat1_rad")
-				* sin(($"lon2_rad"-$"lon1_rad")/2) * sin(($"lon2_rad"-$"lon1_rad")/2)
-		),
-		sqrt(($"lat2_rad"/$"lat2_rad") - (sin(($"lat2_rad"-$"lat1_rad")/2) * sin(($"lat2_rad"-$"lat1_rad")/2)
-				+ cos($"lat2_rad") * cos($"lat1_rad")
-				* sin(($"lon2_rad"-$"lon1_rad")/2) * sin(($"lon2_rad"-$"lon1_rad")/2))
-		)
-	) * 6371e3 *2
-
-) / (2 * dist)))
-val distanceNeighbours = distanceBuckets.withColumn("distanceBucket",explode(array($"distanceBucket" - 1,$"distanceBucket",$"distanceBucket" + 1)))
-val pickupBuckets = distanceBuckets.withColumn("pickupBucket",floor((unix_timestamp($"tpep_pickup_datetime") - unix_timestamp(lit("2016-01-01 00:00:00"))) //distanceBuckets
+val trips5 = trips4.select("lon1_rad","lon2_rad","lat1_rad","lat2_rad","tpep_pickup_datetime","tpep_dropoff_datetime","pickup_latitude","pickup_longitude","dropoff_latitude","dropoff_longitude")
+val pickupLatitudeBucket = trips5.withColumn("pickupLat",floor(ceil($"pickup_latitude" * 111111) / dist))
+val pickupLatitudeNeighbours = pickupLatitudeBucket.withColumn("pickupLat",explode(array($"pickupLat" - 1,$"pickupLat",$"pickupLat" + 1)))
+val dropoffLatitude = trips5.withColumn("dropoffLat",floor(ceil($"dropoff_latitude" * 111111) / dist))
+ 
+val pickupBuckets = pickupLatitudeNeighbours.withColumn("pickupBucket",floor((unix_timestamp($"tpep_pickup_datetime") - unix_timestamp(lit("2016-01-01 00:00:00"))) //distanceBuckets
 	/ (8*3600)))
-val dropoffBuckets = distanceNeighbours.withColumn("dropoffBucket",floor((unix_timestamp($"tpep_dropoff_datetime") - unix_timestamp(lit("2016-01-01 00:00:00"))) //distanceNeighbours
+val dropoffBuckets = dropoffLatitude.withColumn("dropoffBucket",floor((unix_timestamp($"tpep_dropoff_datetime") - unix_timestamp(lit("2016-01-01 00:00:00"))) //distanceNeighbours
  / (8*3600)))
 val pickupNeighbours = pickupBuckets.withColumn("pickupBucket", explode(array($"pickupBucket", $"pickupBucket" + 1)))
-val timeJoin = dropoffBuckets.as("a").join(pickupNeighbours.as("b"),($"a.distanceBucket" === $"b.distanceBucket")&&($"a.dropoffBucket" === $"b.pickupBucket")
+val timeJoin = dropoffBuckets.as("a").join(pickupNeighbours.as("b"),($"a.dropoffBucket" === $"b.pickupBucket")
+	&& ($"a.dropoffLat" === $"b.pickupLat")
+	//&& ($"a.dropoffLon" === $"b.pickupLon")
 	&& (unix_timestamp($"b.tpep_pickup_datetime") > unix_timestamp($"a.tpep_dropoff_datetime"))
     && (unix_timestamp($"a.tpep_dropoff_datetime") + 8*3600 > unix_timestamp($"b.tpep_pickup_datetime"))
     && (atan2(
@@ -82,109 +64,7 @@ timeJoin
 }}
 
 
-/*
-val timeSelect = timeJoin.select($"b.tpep_pickup_datetime",$"a.tpep_dropoff_datetime",$"a.lat2_rad",$"a.lon2_rad",$"a.lat1_rad",$"a.lon1_rad",$"b.lon1_rad",$"b.lat1_rad",$"b.lat2_rad",$"b.lon2_rad")
-val timeFilter = timeSelect.filter(unix_timestamp($"b.tpep_pickup_datetime") > unix_timestamp($"a.tpep_dropoff_datetime"))
-val timeFilter2 = timeFilter.filter(unix_timestamp($"a.tpep_dropoff_datetime") + 8*3600 > unix_timestamp($"b.tpep_pickup_datetime"))
-val distanceSelect = timeFilter.select($"a.lon1_rad",$"a.lon2_rad",$"a.lat1_rad",$"a.lat2_rad",$"b.lon1_rad",$"b.lat1_rad",$"b.lat2_rad",$"b.lon2_rad")
-val distanceFilter = distanceSelect.filter(
-	atan2(
-		sqrt(
-			sin(($"a.lat2_rad"-$"b.lat1_rad")/2) * sin(($"a.lat2_rad"-$"b.lat1_rad")/2)
-				+ cos($"a.lat2_rad") * cos($"b.lat1_rad")
-				* sin(($"a.lon2_rad"-$"b.lon1_rad")/2) * sin(($"a.lon2_rad"-$"b.lon1_rad")/2)
-		),
-		sqrt(($"a.lat2_rad"/$"a.lat2_rad") - (sin(($"a.lat2_rad"-$"b.lat1_rad")/2) * sin(($"a.lat2_rad"-$"b.lat1_rad")/2)
-				+ cos($"a.lat2_rad") * cos($"b.lat1_rad")
-				* sin(($"a.lon2_rad"-$"b.lon1_rad")/2) * sin(($"a.lon2_rad"-$"b.lon1_rad")/2))
-		)
-	) * 6371e3 * 2 < dist
-)
-val distanceFilter2 = distanceFilter.filter(
-	atan2(
-		sqrt(
-			sin(($"b.lat2_rad"-$"a.lat1_rad")/2) * sin(($"b.lat2_rad"-$"a.lat1_rad")/2)
-				+ cos($"b.lat2_rad") * cos($"a.lat1_rad")
-				* sin(($"b.lon2_rad"-$"a.lon1_rad")/2) * sin(($"b.lon2_rad"-$"a.lon1_rad")/2)
-		),
-		sqrt(($"a.lat2_rad"/$"a.lat2_rad") - (sin(($"b.lat2_rad"-$"a.lat1_rad")/2) * sin(($"b.lat2_rad"-$"a.lat1_rad")/2)
-				+ cos($"b.lat2_rad") * cos($"a.lat1_rad")
-				* sin(($"b.lon2_rad"-$"a.lon1_rad")/2) * sin(($"b.lon2_rad"-$"a.lon1_rad")/2))
-		)
-	) * 6371e3 * 2 < dist
-)
-distanceFilter2
-}}
-
-*/
 
 
 
-
-
-
-
-
-
-/*
-
-
-
-
-
-acos(cos($"lat1_rad")*cos($"lat2_rad")*cos($"lon2_rad" - $"lon1_rad") + sin($"lat1_rad") * sin($"lat2_rad")) *6378137
-
-
-
-
-
-
-
-atan2(
-		sqrt(
-			sin(($"a.lat2_rad"-$"b.lat1_rad")/2) * sin(($"a.lat2_rad"-$"b.lat1_rad")/2)
-				+ cos($"a.lat2_rad") * cos($"b.lat1_rad")
-				* sin(($"a.lon2_rad"-$"b.lon1_rad")/2) * sin(($"a.lon2_rad"-$"b.lon1_rad")/2)
-		),
-		sqrt(($"a.lat2_rad"/$"a.lat2_rad") - (sin(($"a.lat2_rad"-$"b.lat1_rad")/2) * sin(($"a.lat2_rad"-$"b.lat1_rad")/2)
-				+ cos($"a.lat2_rad") * cos($"b.lat1_rad")
-				* sin(($"a.lon2_rad"-$"b.lon1_rad")/2) * sin(($"a.lon2_rad"-$"b.lon1_rad")/2))
-		)
-	) * 6371e3 * 2 < dist
-*/
-
-
-/*
-    && (unix_timestamp($"b.tpep_pickup_datetime") > unix_timestamp($"a.tpep_dropoff_datetime"))
-    && (unix_timestamp($"a.tpep_dropoff_datetime") + 8*3600 > unix_timestamp($"b.tpep_pickup_datetime"))
-    && (atan2(
-		sqrt(
-			sin(($"a.lat2_rad"-$"b.lat1_rad")/2) * sin(($"a.lat2_rad"-$"b.lat1_rad")/2)
-				+ cos($"a.lat2_rad") * cos($"b.lat1_rad")
-				* sin(($"a.lon2_rad"-$"b.lon1_rad")/2) * sin(($"a.lon2_rad"-$"b.lon1_rad")/2)
-		),
-		sqrt(($"a.lat2_rad"/$"a.lat2_rad") - (sin(($"a.lat2_rad"-$"b.lat1_rad")/2) * sin(($"a.lat2_rad"-$"b.lat1_rad")/2)
-				+ cos($"a.lat2_rad") * cos($"b.lat1_rad")
-				* sin(($"a.lon2_rad"-$"b.lon1_rad")/2) * sin(($"a.lon2_rad"-$"b.lon1_rad")/2))
-		)
-	) * 6371e3 * 2 < dist)
-	&& 
-	(atan2(
-		sqrt(
-			sin(($"b.lat2_rad"-$"a.lat1_rad")/2) * sin(($"b.lat2_rad"-$"a.lat1_rad")/2)
-				+ cos($"b.lat2_rad") * cos($"a.lat1_rad")
-				* sin(($"b.lon2_rad"-$"a.lon1_rad")/2) * sin(($"b.lon2_rad"-$"a.lon1_rad")/2)
-		),
-		sqrt(($"a.lat2_rad"/$"a.lat2_rad") - (sin(($"b.lat2_rad"-$"a.lat1_rad")/2) * sin(($"b.lat2_rad"-$"a.lat1_rad")/2)
-				+ cos($"b.lat2_rad") * cos($"a.lat1_rad")
-				* sin(($"b.lon2_rad"-$"a.lon1_rad")/2) * sin(($"b.lon2_rad"-$"a.lon1_rad")/2))
-		)
-	) * 6371e3 * 2 < dist)
-)
-
-timeJoin
-
-}
-} 
-*/
 
