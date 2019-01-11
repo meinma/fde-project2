@@ -30,12 +30,15 @@ val pickupBuckets = pickupLatitudeNeighbours.withColumn("pickupBucket",floor((un
 val dropoffBuckets = dropoffLatitude.withColumn("dropoffBucket",floor((unix_timestamp($"tpep_dropoff_datetime") - unix_timestamp(lit("2016-01-01 00:00:00"))) //distanceNeighbours
  / (8*3600)))
 val pickupNeighbours = pickupBuckets.withColumn("pickupBucket", explode(array($"pickupBucket", $"pickupBucket" + 1)))
+//Join funktioniert und die Spaltenwerte liegen nciht am Join
 val timeJoin = dropoffBuckets.as("a").join(pickupNeighbours.as("b"),($"a.dropoffBucket" === $"b.pickupBucket")
 	&& ($"a.dropoffLat" === $"b.pickupLat")
 	&& ($"a.dropoffLon" === $"b.pickupLon")
+	//Das hier muss richtig sein
 	&& (unix_timestamp($"a.tpep_dropoff_datetime") < unix_timestamp($"b.tpep_pickup_datetime"))
     && (unix_timestamp($"a.tpep_dropoff_datetime") + 8*3600 > unix_timestamp($"b.tpep_pickup_datetime"))
-    && ((atan2(
+    //Hier kann nix falsch sein
+    && (lit("2") * (atan2(
 		sqrt(
 			sin(($"a.lat2_rad"-$"b.lat1_rad")/2) * sin(($"a.lat2_rad"-$"b.lat1_rad")/2)
 				+ cos($"a.lat2_rad") * cos($"b.lat1_rad")
@@ -45,9 +48,9 @@ val timeJoin = dropoffBuckets.as("a").join(pickupNeighbours.as("b"),($"a.dropoff
 				+ cos($"a.lat2_rad") * cos($"b.lat1_rad")
 				* sin(($"a.lon2_rad"-$"b.lon1_rad")/2) * sin(($"a.lon2_rad"-$"b.lon1_rad")/2))
 		)
-	) * 6371e3 * 2) < dist)
+	) * 6371000) < dist)
 	&& 
-	((atan2(
+	(lit("2") * (atan2(
 		sqrt(
 			sin(($"b.lat2_rad"-$"a.lat1_rad")/2) * sin(($"b.lat2_rad"-$"a.lat1_rad")/2)
 				+ cos($"b.lat2_rad") * cos($"a.lat1_rad")
@@ -57,7 +60,7 @@ val timeJoin = dropoffBuckets.as("a").join(pickupNeighbours.as("b"),($"a.dropoff
 				+ cos($"b.lat2_rad") * cos($"a.lat1_rad")
 				* sin(($"b.lon2_rad"-$"a.lon1_rad")/2) * sin(($"b.lon2_rad"-$"a.lon1_rad")/2))
 		)
-	) * 6371e3 * 2) < dist)
+	) * 6371000) < dist)
 )
 
 timeJoin
