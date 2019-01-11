@@ -36,7 +36,7 @@ val timeJoin = dropoffBuckets.as("a").join(pickupNeighbours.as("b"),($"a.dropoff
 	&& ($"a.dropoffLon" === $"b.pickupLon")
 	//Das hier muss richtig sein
 	&& (unix_timestamp($"a.tpep_dropoff_datetime") < unix_timestamp($"b.tpep_pickup_datetime"))
-    && (unix_timestamp($"a.tpep_dropoff_datetime") + 8*3600 > unix_timestamp($"b.tpep_pickup_datetime"))
+    && (unix_timestamp($"a.tpep_dropoff_datetime") + 8*3540 > unix_timestamp($"b.tpep_pickup_datetime"))
     //Hier kann nix falsch sein
     && (lit("2") * (atan2(
 		sqrt(
