@@ -20,10 +20,11 @@ val trips4 = trips.withColumn("lon1_rad", toRadians($"pickup_longitude"))
 .withColumn("lat1_rad", toRadians($"pickup_latitude"))
 .withColumn("lat2_rad", toRadians($"dropoff_latitude"))
 
-val trips5 = trips4.select("lon1_rad","lon2_rad","lat1_rad","lat2_rad","tpep_pickup_datetime","tpep_dropoff_datetime","pickup_latitude","pickup_longitude","dropoff_latitude","dropoff_longitude")
-val pickupLatitudeBucket = trips5.withColumn("pickupLat",floor(ceil($"pickup_latitude" * 111111 ) / (2.5 * dist))).withColumn("pickupLon",floor(ceil($"pickup_longitude"*111320) / (2.5 * dist)))
+
+//val trips5 = trips4.select("lon1_rad","lon2_rad","lat1_rad","lat2_rad","tpep_pickup_datetime","tpep_dropoff_datetime","pickup_latitude","pickup_longitude","dropoff_latitude","dropoff_longitude")
+val pickupLatitudeBucket = trips4.withColumn("pickupLat",floor(ceil($"pickup_latitude" * 111111 ) / (2 * dist))).withColumn("pickupLon",floor(ceil($"pickup_longitude"*111111) / (2 * dist)))
 val pickupLatitudeNeighbours = pickupLatitudeBucket.withColumn("pickupLat",explode(array($"pickupLat" - 1,$"pickupLat",$"pickupLat" + 1))).withColumn("pickupLon",explode(array($"pickupLon" - 1,$"pickupLon",$"pickupLon" + 1)))
-val dropoffLatitude = trips5.withColumn("dropoffLat",floor(ceil($"dropoff_latitude" * 111111 ) / (2.5 * dist))).withColumn("dropoffLon",floor(ceil($"dropoff_longitude" * 111320)/(2.5 * dist)))
+val dropoffLatitude = trips4.withColumn("dropoffLat",floor(ceil($"dropoff_latitude" * 111111 ) / (2 * dist))).withColumn("dropoffLon",floor(ceil($"dropoff_longitude" * 111111)/(2 * dist)))
 val pickupBuckets = pickupLatitudeNeighbours.withColumn("pickupBucket",floor((unix_timestamp($"tpep_pickup_datetime") - unix_timestamp(lit("2016-01-01 00:00:00"))) //distanceBuckets
 	/ (8*3600)))
 val dropoffBuckets = dropoffLatitude.withColumn("dropoffBucket",floor((unix_timestamp($"tpep_dropoff_datetime") - unix_timestamp(lit("2016-01-01 00:00:00"))) //distanceNeighbours
@@ -61,9 +62,6 @@ val timeJoin = dropoffBuckets.as("a").join(pickupNeighbours.as("b"),($"a.dropoff
 
 timeJoin
 }}
-
-//&& (acos(cos($"a.lat1_rad") * cos($"b.lat2_rad") * cos($"b.lon2_rad" - $"a.lon1_rad") + sin($"a.lat1_rad") * sin($"b.lat2_rad")))
-  //  && (acos(cos($"b.lat1_rad") * cos($"a.lat2_rad") * cos($"a.lon2_rad" - $"b.lon1_rad") + sin($"b.lat1_rad") * sin($"a.lat2_rad")))
 
 
 
