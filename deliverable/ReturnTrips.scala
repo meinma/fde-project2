@@ -21,9 +21,9 @@ val trips4 = trips.withColumn("lon1_rad", toRadians($"pickup_longitude"))
 .withColumn("lat2_rad", toRadians($"dropoff_latitude"))
 
 val trips5 = trips4.select("lon1_rad","lon2_rad","lat1_rad","lat2_rad","tpep_pickup_datetime","tpep_dropoff_datetime","pickup_latitude","pickup_longitude","dropoff_latitude","dropoff_longitude")
-val pickupLatitudeBucket = trips5.withColumn("pickupLat",floor(ceil($"pickup_latitude" * 111111 ) / (2 * dist))).withColumn("pickupLon",floor(ceil($"pickup_longitude"*111111) / (2 * dist)))
+val pickupLatitudeBucket = trips5.withColumn("pickupLat",floor(ceil($"pickup_latitude" * 111320 ) / (2 * dist))).withColumn("pickupLon",floor(ceil($"pickup_longitude"*111320) / (2 * dist)))
 val pickupLatitudeNeighbours = pickupLatitudeBucket.withColumn("pickupLat",explode(array($"pickupLat" - 1,$"pickupLat",$"pickupLat" + 1))).withColumn("pickupLon",explode(array($"pickupLon" - 1,$"pickupLon",$"pickupLon" + 1)))
-val dropoffLatitude = trips5.withColumn("dropoffLat",floor(ceil($"dropoff_latitude" * 111111 ) / (2 * dist))).withColumn("dropoffLon",floor(ceil($"dropoff_longitude" * 111111)/(2 * dist)))
+val dropoffLatitude = trips5.withColumn("dropoffLat",floor(ceil($"dropoff_latitude" * 111320 ) / (2 * dist))).withColumn("dropoffLon",floor(ceil($"dropoff_longitude" * 111320)/(2 * dist)))
 val pickupBuckets = pickupLatitudeNeighbours.withColumn("pickupBucket",floor((unix_timestamp($"tpep_pickup_datetime") - unix_timestamp(lit("2016-01-01 00:00:00"))) //distanceBuckets
 	/ (8*3600)))
 val dropoffBuckets = dropoffLatitude.withColumn("dropoffBucket",floor((unix_timestamp($"tpep_dropoff_datetime") - unix_timestamp(lit("2016-01-01 00:00:00"))) //distanceNeighbours
