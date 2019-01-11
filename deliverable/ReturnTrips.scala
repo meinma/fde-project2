@@ -27,14 +27,14 @@ val trips5 = trips4.select("lon1_rad","lon2_rad","lat1_rad","lat2_rad","tpep_pic
 
 
 
-val pickupLatitudeBucket = trips5.withColumn("pickupLat",floor($"lat1_rad" * (6371e3  / dist)))//.withColumn("pickupLon",floor($"lon1_rad" * (cos(lit("61")) * 6371e3 /  dist)))
-val pickupLatitudeNeighbours = pickupLatitudeBucket.withColumn("pickupLat",explode(array($"pickupLat" - 1,$"pickupLat",$"pickupLat" + 1)))//.withColumn("pickupLon",explode(array($"pickupLon" - 1,$"pickupLon",$"pickupLon" + 1)))
-val dropoffLatitude = trips5.withColumn("dropoffLat",floor($"lat2_rad" * (6371e3 /  dist)))//.withColumn("dropoffLon",floor($"lon2_rad" * (cos(lit("61")) *6371e3 / dist)))
+val pickupLatitudeBucket = trips5.withColumn("pickupLat",floor($"lat1_rad" * (6371e3  / dist))).withColumn("pickupLon",floor($"lon1_rad" * (cos(lit("61")) * 6371e3 /  dist)))
+val pickupLatitudeNeighbours = pickupLatitudeBucket.withColumn("pickupLat",explode(array($"pickupLat" - 1,$"pickupLat",$"pickupLat" + 1))).withColumn("pickupLon",explode(array($"pickupLon" - 1,$"pickupLon",$"pickupLon" + 1)))
+val dropoffLatitude = trips5.withColumn("dropoffLat",floor($"lat2_rad" * (6371e3 /  dist))).withColumn("dropoffLon",floor($"lon2_rad" * (cos(lit("61")) *6371e3 / dist)))
 val pickupBuckets = pickupLatitudeNeighbours.withColumn("pickupBucket",floor(unix_timestamp($"tpep_pickup_datetime") / (8*3600)))
 val dropoffBuckets = dropoffLatitude.withColumn("dropoffBucket",floor(unix_timestamp($"tpep_dropoff_datetime") / (8*3600)))
 val pickupNeighbours = pickupBuckets.withColumn("pickupBucket", explode(array($"pickupBucket", $"pickupBucket" - 1)))
 val timeJoin = dropoffBuckets.as("a").join(pickupNeighbours.as("b"),($"a.dropoffLat" === $"b.pickupLat")
-	//&& ($"a.dropoffLon" === $"b.pickupLon")
+	&& ($"a.dropoffLon" === $"b.pickupLon")
 	&&($"a.dropoffBucket" === $"b.pickupBucket")
 	&& (unix_timestamp($"a.tpep_dropoff_datetime") < unix_timestamp($"b.tpep_pickup_datetime"))
     && (unix_timestamp($"a.tpep_dropoff_datetime") + 8*3600 > unix_timestamp($"b.tpep_pickup_datetime"))
