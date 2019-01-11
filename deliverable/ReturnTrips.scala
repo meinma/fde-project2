@@ -22,22 +22,25 @@ val trips4 = trips.withColumn("lon1_rad", toRadians($"pickup_longitude"))
 
 
 val trips5 = trips4.select("lon1_rad","lon2_rad","lat1_rad","lat2_rad","tpep_pickup_datetime","tpep_dropoff_datetime","pickup_latitude","pickup_longitude","dropoff_latitude","dropoff_longitude")
-val pickupLatitudeBucket = trips5.withColumn("pickupLat",floor(ceil($"pickup_latitude" * 111111 ) / (1 * dist))).withColumn("pickupLon",floor(ceil($"pickup_longitude"* 111111 * cos(lit("61"))) / (1 * dist)))
-val pickupLatitudeNeighbours = pickupLatitudeBucket.withColumn("pickupLat",explode(array($"pickupLat" - 1,$"pickupLat",$"pickupLat" + 1))).withColumn("pickupLon",explode(array($"pickupLon" - 1,$"pickupLon",$"pickupLon" + 1)))
-val dropoffLatitude = trips5.withColumn("dropoffLat",floor(ceil($"dropoff_latitude" * 111111 ) / (1 * dist))).withColumn("dropoffLon",floor(ceil($"dropoff_longitude" * 111111 * cos(lit("61"))) / (1 * dist)))
+
+
+
+
+
+val pickupLatitudeBucket = trips5.withColumn("pickupLat",floor($"lat1_rad" * (6371e3  / dist)))//.withColumn("pickupLon",floor(ceil($"pickup_longitude"* 111111 * cos(lit("61"))) / (1 * dist)))
+val pickupLatitudeNeighbours = pickupLatitudeBucket.withColumn("pickupLat",explode(array($"pickupLat" - 1,$"pickupLat",$"pickupLat" + 1)))//.withColumn("pickupLon",explode(array($"pickupLon" - 1,$"pickupLon",$"pickupLon" + 1)))
+val dropoffLatitude = trips5.withColumn("dropoffLat",floor($"lat2_rad" * (6371e3 /  dist)))//.withColumn("dropoffLon",floor(ceil($"dropoff_longitude" * 111111 * cos(lit("61"))) / (1 * dist)))
+
 val pickupBuckets = pickupLatitudeNeighbours.withColumn("pickupBucket",floor((unix_timestamp($"tpep_pickup_datetime") - unix_timestamp(lit("2016-01-01 00:00:00"))) //distanceBuckets
 	/ (8*3600)))
 val dropoffBuckets = dropoffLatitude.withColumn("dropoffBucket",floor((unix_timestamp($"tpep_dropoff_datetime") - unix_timestamp(lit("2016-01-01 00:00:00"))) //distanceNeighbours
  / (8*3600)))
 val pickupNeighbours = pickupBuckets.withColumn("pickupBucket", explode(array($"pickupBucket", $"pickupBucket" + 1)))
-//Join funktioniert und die Spaltenwerte liegen nciht am Join
 val timeJoin = dropoffBuckets.as("a").join(pickupNeighbours.as("b"),($"a.dropoffLat" === $"b.pickupLat")
-	&& ($"a.dropoffLon" === $"b.pickupLon")
+	//&& ($"a.dropoffLon" === $"b.pickupLon")
 	&&($"a.dropoffBucket" === $"b.pickupBucket")
-	//Das hier muss richtig sein
 	&& (unix_timestamp($"a.tpep_dropoff_datetime") < unix_timestamp($"b.tpep_pickup_datetime"))
     && (unix_timestamp($"a.tpep_dropoff_datetime") + 8*3600 > unix_timestamp($"b.tpep_pickup_datetime"))
-    //Hier kann nix falsch sein
     && (asin(
 		sqrt(
 			sin(($"a.lat2_rad"-$"b.lat1_rad")/2) * sin(($"a.lat2_rad"-$"b.lat1_rad")/2)
